@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# env files
+.env
+.env.local
+
+# logs
+logs
+*.log
+
+# build
+dist/
+.next/
+
+# prisma generated
+generated/
+prisma/migrations/
+
+# OS
+.DS_Store
