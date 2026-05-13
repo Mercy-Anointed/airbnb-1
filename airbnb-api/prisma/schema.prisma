@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+// Enums restrict a field to specific values only
+// Prevents garbage data like role: "SUPERADMIN" or status: "maybe"
+
+enum UserRole {
+  GUEST    // Can search and book properties
+  HOST     // Can list and manage properties
+  ADMIN    // Full system access
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  VILLA
+  CABIN
+  STUDIO
+  LOFT
+}
+
+enum BookingStatus {
+  PENDING    // Created, awaiting confirmation
+  CONFIRMED  // Host accepted or auto-confirmed
+  CANCELLED  // Cancelled by guest or host
+  COMPLETED  // Stay finished
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  password  String?  // bcrypt hash — never plain text
+  googleId  String? @unique // for Google OAuth users
+  role      UserRole @default(GUEST)
+  isEmailVerified  Boolean @default(false)
+  otpCode      String?
+otpExpiresAt DateTime?
+  // emailVerificationToken String? // for email verification flow
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  properties      Property[] // properties this user hosts
+  bookings        Booking[]  @relation("GuestBookings")
+  reviewsGiven    Review[]   @relation("ReviewsGiven")
+  reviewsReceived Review[]   @relation("ReviewsReceived")
+  refreshTokens  RefreshToken[]
+  passwordResets  PasswordReset[]
+
+ 
+  @@index([deletedAt])
+  @@map("users")
+}
+
+
+model PasswordReset {
+  id    String @id @default(cuid())
+  token  String @unique
+  userId  String
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@map("password-resets")
+}
+
+model Property {
+  id            String       @id @default(cuid())
+  title         String
+  description   String
+  type          PropertyType
+  pricePerNight Decimal      @db.Decimal(10, 2)
+  cleaningFee   Decimal      @db.Decimal(10, 2) @default(0)
+  maxGuests     Int
+  bedrooms      Int
+  bathrooms     Int
+  address       String
+  city          String
+  country       String
+  latitude      Float
+  longitude     Float
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Foreign key
+  hostId    String
+  host      User            @relation(fields: [hostId], references: [id])
+
+  // Relations
+  amenities Amenity[]
+  images    PropertyImage[]
+  bookings  Booking[]
+  reviews   Review[]
+
+  // Indexes — speeds up the exact queries Airbnb runs
+  // city + isActive: "show me active listings in Lagos"
+  // pricePerNight + isActive: "show me listings under $100"
+  // hostId: "show me all listings by this host"
+  @@index([city])
+  @@index([country])
+  @@index([hostId])
+  @@index([isActive])
+  @@index([city, isActive])
+  @@index([pricePerNight, isActive])
+  @@map("properties")
+}
+
+model Amenity {
+  id         String   @id @default(cuid())
+  name       String   // "WiFi", "Pool", "Kitchen", "Parking"
+  icon       String?
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("amenities")
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  url        String
+  caption    String?
+  isPrimary  Boolean  @default(false)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_images")
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  checkIn     DateTime
+  checkOut    DateTime
+  totalPrice  Decimal       @db.Decimal(10, 2)
+  nightsCount Int
+  status      BookingStatus @default(PENDING)
+  currency    String        @default("NGN")
+  paymentProvider  PaymentProvider?
+  paymentStatus    PaymentStatus   @default(UNPAID)
+  paymentReference String?         @unique
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  guestId    String
+  guest      User     @relation("GuestBookings", fields: [guestId], references: [id])
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  // checkIn + checkOut index: availability overlap detection queries
+  // propertyId + status: "show confirmed bookings for this property"
+  @@index([propertyId])
+  @@index([guestId])
+  @@index([status])
+  @@index([paymentReference])
+  @@index([paymentStatus])
+  @@index([checkIn, checkOut])
+  @@index([propertyId, status])
+  @@map("bookings")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5 stars
+  comment   String
+  createdAt DateTime @default(now())
+
+  authorId   String
+  author     User     @relation("ReviewsGiven", fields: [authorId], references: [id])
+  subjectId  String
+  subject    User     @relation("ReviewsReceived", fields: [subjectId], references: [id])
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@index([authorId])
+  @@index([subjectId])
+  @@map("reviews")
+}
+
+model RefreshToken {
+  id  String @id @default(cuid())
+  token String @unique
+  userId String 
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh-tokens")
+}
