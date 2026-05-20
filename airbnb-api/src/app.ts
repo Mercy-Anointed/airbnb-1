@@ -110,14 +110,20 @@ const startServer = async () => {
 
     await connectMongoDB();
 
+    // try {
+    //   await cache.connect();
+    // } catch (redisError) {
+    //   if (env.IS_PRODUCTION) {
+    //     logger.error('Redis connection failed in production. Shutting down.');
+    //     process.exit(1);
+    //   }
+    //   logger.warn('Redis unavailable — continuing without cache [development only]');
+    // }
+
     try {
       await cache.connect();
     } catch (redisError) {
-      if (env.IS_PRODUCTION) {
-        logger.error('Redis connection failed in production. Shutting down.');
-        process.exit(1);
-      }
-      logger.warn('⚠️  Redis unavailable — continuing without cache [development only]');
+      logger.warn(' Redis unavailable — continuing without cache');
     }
 
     const server = app.listen(env.PORT, () => {
