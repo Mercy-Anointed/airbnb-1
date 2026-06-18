@@ -27,7 +27,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
     const res = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
     });
 
     if (!res.ok) {
@@ -304,6 +303,18 @@ export const authApi = {
     request<MessageResponse>('/auth/resend-otp', {
       method: 'POST',
       body: JSON.stringify({ email }),
+    }),
+
+  forgotPassword: (email: string) =>
+    request<MessageResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    request<MessageResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 
   login: (data: { email: string; password: string }) =>

@@ -27,6 +27,36 @@ import { getMetrics, observabilityMiddleware } from './middleware/observability.
 
 const app = express();
 
+const allowedOrigins = [
+  ...(process.env.ALLOWED_ORIGINS?.split(',') ?? []),
+  env.CLIENT_URL,
+  env.APP_URL,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    logger.warn(`Blocked CORS origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
 
@@ -34,14 +64,8 @@ app.use(helmet());
 // credentials: true allows cookies (refresh token) to be sent cross-origin
 // origin: '*' + credentials: true is blocked by browsers — must list origins
 // In production, ALLOWED_ORIGINS env var holds comma-separated allowed domains
-app.use(cors({
-  origin: env.IS_PRODUCTION
-    ? process.env.ALLOWED_ORIGINS?.split(',')
-    : 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(passport.initialize());
 app.use(observabilityMiddleware);
