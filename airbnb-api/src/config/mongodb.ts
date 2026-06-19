@@ -12,8 +12,8 @@ export const connectMongoDB = async (): Promise<void> => {
   try {
     await mongoose.connect(env.MONGODB_URI);
     await Promise.all([
-      Conversation.syncIndexes(),
-      ChatMessage.syncIndexes(),
+      Conversation.createIndexes(),
+      ChatMessage.createIndexes(),
     ]);
     logger.info('MongoDB connected');
   } catch (error) {

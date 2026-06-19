@@ -61,7 +61,6 @@ const ConversationSchema = new Schema<IConversation>(
     conversationKey: {
       type: String,
       required: true,
-      unique: true,
     },
     propertyId: {
       type: String,
@@ -82,7 +81,15 @@ const ConversationSchema = new Schema<IConversation>(
 );
 
 ConversationSchema.index({ participantIds: 1 });
-ConversationSchema.index({ conversationKey: 1 }, { unique: true });
+ConversationSchema.index(
+  { conversationKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      conversationKey: { $type: 'string' },
+    },
+  }
+);
 ConversationSchema.index({ lastMessageAt: -1 });
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 MessageSchema.index({ conversationId: 1, readAt: 1 });
