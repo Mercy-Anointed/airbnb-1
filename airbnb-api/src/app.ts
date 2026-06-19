@@ -33,6 +33,13 @@ import { startBookingHoldExpiryJob, stopBookingHoldExpiryJob } from './jobs/book
 const app = express();
 
 /* =========================================================
+   TRUST PROXY (Render sits behind a reverse proxy — required
+   for express-rate-limit / X-Forwarded-For to work correctly)
+========================================================= */
+
+app.set('trust proxy', 1);
+
+/* =========================================================
    CORS FIX (IMPORTANT PART)
 ========================================================= */
 
@@ -74,7 +81,6 @@ const corsOptions: cors.CorsOptions = {
 app.use(helmet());
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // preflight fix
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
