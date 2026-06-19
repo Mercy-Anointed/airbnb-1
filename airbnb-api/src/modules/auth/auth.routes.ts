@@ -190,7 +190,7 @@ router.get(
 
       // ── Use authService — consistent with entire codebase ──────
       const { accessToken, refreshToken } = await authService.generateAuthTokens({
-        id: user.id,
+        id: user.userId,
         email: user.email,
         role: user.role,
       });

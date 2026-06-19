@@ -5,14 +5,6 @@ import jwt from 'jsonwebtoken'
 import { env } from "../config/env";
 import { prisma } from "../config/database";
 
-declare global{
-    namespace Express {
-        interface Request {
-            user?: TokenPayload
-        }
-    }
-}
-
 // ─── Authenticate Middleware ──────────────────────────────────────────────────
 // Verifies JWT access token on every protected request
 // Attaches decoded user payload to req.user

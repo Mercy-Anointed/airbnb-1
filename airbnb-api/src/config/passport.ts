@@ -2,6 +2,20 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
 import { prisma } from './database'; // adjust to match your prisma client import path
 
+const toAuthUser = (user: {
+  id: string;
+  email: string;
+  role: string;
+  name: string;
+  avatar: string | null;
+}) => ({
+  userId: user.id,
+  email: user.email,
+  role: user.role,
+  name: user.name,
+  avatar: user.avatar,
+});
+
 passport.use(
   new GoogleStrategy(
     // ── Part 1: Tell Google who you are ─────────────────────────
@@ -33,7 +47,7 @@ passport.use(
         let user = await prisma.user.findFirst({
           where: { googleId: profile.id, deletedAt: null },
         });
-        if (user) return done(null, user);
+        if (user) return done(null, toAuthUser(user));
 
         // ── Scenario 2: Existing email user linking Google ──────
         // They registered with email/password first, now using Google.
@@ -51,7 +65,7 @@ passport.use(
               avatar: existingByEmail.avatar ?? profile.photos?.[0]?.value,
             },
           });
-          return done(null, user);
+          return done(null, toAuthUser(user));
         }
 
         // ── Scenario 3: Brand new user ──────────────────────────
@@ -69,7 +83,7 @@ passport.use(
           },
         });
 
-        return done(null, user);
+        return done(null, toAuthUser(user));
       } catch (error) {
         // done(error, undefined) tells Passport something went wrong
         // Passport will then trigger the failureRedirect
